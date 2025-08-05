@@ -1,0 +1,39 @@
+name: Run Jira Importer
+
+on:
+  schedule:
+    # The script runs automatically once every 24 hours.
+    - cron: '0 0 * * *'
+
+jobs:
+  run-importer:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.9'
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: Run Jira Importer script
+        env:
+          JIRA_SERVER_URL: ${{ secrets.JIRA_SERVER_URL }}
+          JIRA_EMAIL: ${{ secrets.JIRA_EMAIL }}
+          JIRA_API_TOKEN: ${{ secrets.JIRA_API_TOKEN }}
+        run: |
+          python jira_importer.py
+
+      # Optional step to upload the generated JSON file as an artifact
+      - name: Upload jira_issues.json as artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: jira-issues-json
+          path: jira_issues.json
