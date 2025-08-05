@@ -130,7 +130,7 @@ def main():
         # Go to your folder in the browser. The ID is in the URL after 'folders/'
         google_drive_folder_id = "1ZqgKiDwkYiLpKt5NLKKDOOzZrhfBCuCP"
         
-        if google_drive_folder_id == "1ZqgKiDwkYiLpKt5NLKKDOOzZrhfBCuCP":
+        if google_drive_folder_id == "your_google_drive_folder_id_here":
             print("\nError: Please get your Google Drive folder ID and add it to the script.")
             return
 
