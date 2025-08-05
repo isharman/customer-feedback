@@ -4,6 +4,7 @@ on:
   schedule:
     # The script runs automatically once every 24 hours.
     - cron: '0 0 * * *'
+  workflow_dispatch:
 
 jobs:
   run-importer:
