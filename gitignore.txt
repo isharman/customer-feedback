@@ -1,0 +1,8 @@
+# Ignore Python-specific files 
+__pycache__/
+*.pyc
+
+# Ignore local environment variables
+.env
+
+# Ignore the output file jira_issues.json
