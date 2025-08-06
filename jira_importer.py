@@ -16,13 +16,13 @@ def connect_to_google_drive():
     creds_json_string = os.environ.get("GOOGLE_DRIVE_CREDENTIALS_JSON")
     if not creds_json_string:
         raise ValueError("GOOGLE_DRIVE_CREDENTIALS_JSON secret not found.")
-    
+
     # We load the JSON credentials from the environment variable
     creds_info = json.loads(creds_json_string)
-    
+
     SCOPES = ['https://www.googleapis.com/auth/drive.file']
     creds = service_account.Credentials.from_service_account_info(creds_info, scopes=SCOPES)
-    
+
     service = build('drive', 'v3', credentials=creds)
     print("Successfully connected to Google Drive API.")
     return service
@@ -32,19 +32,19 @@ def upload_to_google_drive(service, file_name, folder_id):
     Uploads a file to a specific Google Drive folder.
     If a file with the same name exists, it will be updated.
     """
-    
+
     # Check if the file already exists in the folder
     query = f"name='{file_name}' and '{folder_id}' in parents and trashed = false"
     response = service.files().list(q=query, spaces='drive', fields='files(id)').execute()
     existing_files = response.get('files', [])
-    
+
     # Read the file content
     with open(file_name, 'rb') as f:
         file_content = f.read()
 
     file_metadata = {'name': file_name, 'parents': [folder_id]}
     media = MediaIoBaseUpload(io.BytesIO(file_content), mimetype='application/json')
-    
+
     if existing_files:
         # File exists, so update it
         file_id = existing_files[0]['id']
@@ -126,29 +126,29 @@ def main():
 
     # --- 3. Google Drive Upload Logic ---
     try:
+        drive_service = connect_to_google_drive()
+
+        # Debugging: List all folders visible to the service account, including Shared Drives
+        results = drive_service.files().list(
+            q="mimeType='application/vnd.google-apps.folder'",
+            fields="files(id, name, driveId, parents)",
+            supportsAllDrives=True,
+            includeItemsFromAllDrives=True
+        ).execute()
+        print("Folders accessible to service account:")
+        for folder in results.get('files', []):
+            print(f"Name: {folder['name']}, ID: {folder['id']}, DriveID: {folder.get('driveId')}, Parents: {folder.get('parents')}")
+
         # This is the folder ID of the folder you created in Google Drive
         # Go to your folder in the browser. The ID is in the URL after 'folders/'
         google_drive_folder_id = "1ZqgKiDwkYiLpKt5NLKKDOOzZrhfBCuCP"
-        
+
         if google_drive_folder_id == "your_google_drive_folder_id_here":
             print("\nError: Please get your Google Drive folder ID and add it to the script.")
             return
 
-        drive_service = connect_to_google_drive()
+        upload_to_google_drive(drive_service, local_file_name, google_drive_folder_id)
 
-	#Debugging: List all folders visible to the service account, including Shared Drives
-	results = drive_service.files().list(
-		q="mimeType='application/vnd.google-apps.folder'",
-    		fields="files(id, name, driveId, parents)",
-    		supportsAllDrives=True,
-    		includeItemsFromAllDrives=True
-	).execute()
-	print("Folders accessible to service account:")
-	for folder in results.get('files', []):
-    		print(f"Name: {folder['name']}, ID: {folder['id']}, DriveID: {folder.get('driveId')}, Parents: {folder.get('parents')}")
-        
-	upload_to_google_drive(drive_service, local_file_name, google_drive_folder_id)
-        
     except Exception as e:
         print(f"Failed to upload to Google Drive. Error: {e}")
         return
