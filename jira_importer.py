@@ -135,6 +135,17 @@ def main():
             return
 
         drive_service = connect_to_google_drive()
+        # Debugging: List all folders visible to the service account, including Shared Drives
+        results = drive_service.files().list(
+            q="mimeType='application/vnd.google-apps.folder'",
+            fields="files(id, name, driveId, parents)",
+            supportsAllDrives=True,
+            includeItemsFromAllDrives=True
+		).execute()
+		print("Folders accessible to service account:")
+		for folder in results.get('files', []):
+   			print(f"Name: {folder['name']}, ID: {folder['id']}, DriveID: {folder.get('driveId')}, Parents: {folder.get('parents')}")
+			
         upload_to_google_drive(drive_service, local_file_name, google_drive_folder_id)
         
     except Exception as e:
