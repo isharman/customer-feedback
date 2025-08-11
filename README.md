@@ -51,7 +51,7 @@ This project is configured to run automatically using **GitHub Actions**. Manual
 
 ## 🏃 Usage
 
-* **Automated Execution:** The script runs automatically once every 24 hours on the GitHub Actions platform.
+* **Automated Execution:** The script runs automatically every Monday at midnight UTC on the GitHub Actions platform.
 * **Manual Execution (for testing):** You can manually trigger the workflow from the **Actions** tab in your GitHub repository to run the script at any time.
 
 ## How It Works
