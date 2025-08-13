@@ -57,4 +57,4 @@ This project is configured to run automatically using **GitHub Actions**. Manual
 ## How It Works
 
 * The workflow in your GitHub repository executes on a schedule.
-* It uses your securely stored
+* To be added
