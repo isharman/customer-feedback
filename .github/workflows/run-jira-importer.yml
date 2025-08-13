@@ -2,7 +2,7 @@ name: Run Jira Importer
 
 on:
   schedule:
-    # The script runs automatically once every 24 hours.
+    # The script runs automatically once per week, at midnight on Mondays.
     - cron: '0 0 * * 1'
   workflow_dispatch:
 
