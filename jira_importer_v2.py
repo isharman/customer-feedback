@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 import os
 import json
 from jira import JIRA
@@ -22,14 +21,12 @@ def login_with_service_account():
     :return: google auth
     """
     # Define the settings dict to use a service account
-    # We also can use all options available for the settings dict like
-    # oauth_scope,save_credentials,etc.
     settings = {
-                "client_config_backend": "service",
-                "service_config": {
-                    "client_json_file_path": "service_account.json",
-                }
-            }
+        "client_config_backend": "service",
+        "service_config": {
+            "client_json_file_path": "service_account.json",
+        }
+    }
     # Create instance of GoogleAuth
     gauth = GoogleAuth(settings=settings)
     # Authenticate
@@ -187,6 +184,14 @@ def main():
         print("Error: Missing one or more JIRA env vars: JIRA_SERVER_URL, JIRA_EMAIL, JIRA_API_TOKEN")
         return
 
+    # Create a temporary service_account.json file
+    service_account_json_content = os.environ.get("GOOGLE_SERVICE_ACCOUNT_JSON")
+    if not service_account_json_content:
+        print("Error: GOOGLE_SERVICE_ACCOUNT_JSON secret not found.")
+        return
+    with open("service_account.json", "w") as f:
+        f.write(service_account_json_content)
+
     # 1) Export from Jira to local JSON
     jql_query = 'project = "PFR" AND issuetype = "Feature Request" ORDER BY created DESC'
     local_file_name = "jira_issues.json"
@@ -198,11 +203,12 @@ def main():
 
     # 2) Connect to Google Drive (PyDrive2)
     try:
-        yes = login_with_service_account()
+        gauth = login_with_service_account()
     except Exception as e:
         print(f"Failed to authenticate to Google Drive. Error: {e}")
         return
-    drive = GoogleDrive(yes)
+    drive = GoogleDrive(gauth)
+
     # Optional: list some folders visible to the service account (debug)
     try:
         folders = drive.ListFile({
@@ -217,22 +223,15 @@ def main():
         print(f"Warning: failed to list folders: {e}")
 
     # 3) Upload/Update JSON into your target folder (Shared Drive/folder must be shared with the SA)
+    # This is the folder ID of the folder you created in Google Drive
+    # Go to your folder in the browser. The ID is in the URL after 'folders/'
     folder_id = '1ZqgKiDwkYiLpKt5NLKKDOOzZrhfBCuCP' # Replace with the actual folder ID
     file_path = local_file_name # Replace with the actual path to your local file
-
-    # Create a GoogleDriveFile instance, specifying the parent folder
-    file_to_upload = drive.CreateFile({'parents': [{'id': folder_id}]})
-
-    # Set the content of the file from your local file
-    file_to_upload.SetContentFile(file_path)
-
-    # Upload the file
     try:
-        file_to_upload.Upload()
+        upload_to_google_drive(drive, file_path, folder_id)
     except Exception as e:
         print(f"Failed to upload to Google Drive. Error: {e}")
         return
-    print(f"Uploaded file '{file_to_upload['title']}' to folder ID '{folder_id}'")
 
 if __name__ == "__main__":
     main()
