@@ -22,6 +22,7 @@ I have access to an Enterprise Github account, Enterprise Gemini account, Enterp
 - Authenticates with **JIRA Cloud** using API token
 - Fetches all **Feature Request** issues from the `PFR` project using JQL
 - Outputs a `jira_issues.json` file with relevant metadata
+- Adds a `last_updated` timestamp to the top of the JSON structure
 - Uploads the file to a **Google Drive folder** using a service account
 - Compatible with **Shared Drives** and folder shortcuts
 - Enables the Notebook LLM to query and analyze customer feedback.
