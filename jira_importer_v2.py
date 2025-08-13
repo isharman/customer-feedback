@@ -85,9 +85,9 @@ def upload_to_google_drive(drive: GoogleDrive, file_path: str, folder_id: str):
         return f["id"]
 
 # =========================
-# Jira -> JSON export
+# Jira -> JSON + TXT export
 # =========================
-def export_jira_to_json(jira_url: str, jira_email: str, jira_api_token: str, jql_query: str, out_path: str) -> str:
+def export_jira_data(jira_url: str, jira_email: str, jira_api_token: str, jql_query: str, json_path: str, txt_path: str):
     try:
         jira = JIRA(server=jira_url, basic_auth=(jira_email, jira_api_token))
         print("Successfully connected to Jira.")
@@ -121,16 +121,32 @@ def export_jira_to_json(jira_url: str, jira_email: str, jira_api_token: str, jql
         }
         issue_list.append(issue_data)
 
+    last_updated = datetime.utcnow().strftime("%B %d, %Y at %I:%M %p UTC")
     output_data = {
-        "last_updated": datetime.utcnow().strftime("%B %d, %Y at %I:%M %p UTC"),
+        "last_updated": last_updated,
         "issues": issue_list
     }
 
-    with open(out_path, "w", encoding="utf-8") as f:
+    with open(json_path, "w", encoding="utf-8") as f:
         json.dump(output_data, f, ensure_ascii=False, indent=4)
 
-    print(f"Successfully saved issues to {out_path}")
-    return out_path
+    print(f"Successfully saved JSON to {json_path}")
+
+    with open(txt_path, "w", encoding="utf-8") as f:
+        f.write(f"Last updated: {last_updated}\n\n")
+        for issue in issue_list:
+            f.write(f"{issue['key']}: {issue['summary']}\n")
+            f.write(f"Status: {issue['status']}\n")
+            f.write(f"Product Area: {issue['product_area']}\n")
+            f.write(f"Priority: {issue['idea_priority']}\n")
+            f.write(f"Reporter: {issue['reporter']}\n")
+            f.write(f"Assignee: {issue['assignee']}\n")
+            f.write(f"Created: {issue['created']}\n")
+            f.write(f"Description:\n{issue['description']}\n")
+            f.write(f"Workaround:\n{issue['workaround']}\n")
+            f.write("----------------------------------------\n\n")
+
+    print(f"Successfully saved TXT to {txt_path}")
 
 # =========================
 # Main
@@ -154,9 +170,10 @@ def main():
         f.write(service_account_json_content)
 
     jql_query = 'project = "PFR" AND issuetype = "Feature Request" ORDER BY created DESC'
-    local_file_name = "jira_issues.json"
+    json_file = "jira_issues.json"
+    txt_file = "jira_issues.txt"
     try:
-        export_jira_to_json(jira_url, jira_email, jira_api_token, jql_query, local_file_name)
+        export_jira_data(jira_url, jira_email, jira_api_token, jql_query, json_file, txt_file)
     except Exception as e:
         print(e)
         return
@@ -168,22 +185,9 @@ def main():
         return
     drive = GoogleDrive(gauth)
 
-    try:
-        folders = drive.ListFile({
-            "q": "mimeType='application/vnd.google-apps.folder' and trashed = false",
-            "supportsAllDrives": True,
-            "includeItemsFromAllDrives": True
-        }).GetList()
-        print("Folders accessible to service account:")
-        for folder in folders:
-            print(f" - {folder.get('title')} (ID: {folder.get('id')})")
-    except Exception as e:
-        print(f"Warning: failed to list folders: {e}")
-
     folder_id = '1ZqgKiDwkYiLpKt5NLKKDOOzZrhfBCuCP'
-    file_path = local_file_name
     try:
-        upload_to_google_drive(drive, file_path, folder_id)
+        upload_to_google_drive(drive, txt_file, folder_id)
     except Exception as e:
         print(f"Failed to upload to Google Drive. Error: {e}")
         return
