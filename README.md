@@ -44,7 +44,7 @@ This project is configured to run automatically using **GitHub Actions**. Manual
 
 ## ⚙️ Configuration
 
-* **Environment Variables & Security:** For security, you must **NEVER** commit your Jira API token to GitHub. Instead, your `JIRA_API_TOKEN` and `JIRA_EMAIL`, along with the `JIRA_SERVER_URL` and `GOOGLE_DRIVE_CREDENTIALS_JSON`, are saved as **GitHub Secrets**.
+* **Environment Variables & Security:** For security, you must **NEVER** commit your Jira API token to GitHub. Instead, your `JIRA_API_TOKEN` and `JIRA_EMAIL`, along with the `JIRA_SERVER_URL` and `GOOGLE_SERVICE_ACCOUNT_JSON`, are saved as **GitHub Secrets**.
 * **Jira Server URL:** `https://yexttest.atlassian.net`
 * **JQL Query:** The script uses the following JQL to fetch issues: `project = "PFR" AND issuetype = "Feature Request" ORDER BY created DESC`
 * **Google Drive Folder ID:** The script requires the ID of the Google Drive folder where the `jira_issues.json` file will be uploaded. This is configured directly in the `jira_importer.py` script.
