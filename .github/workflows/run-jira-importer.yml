@@ -31,7 +31,7 @@ jobs:
           JIRA_API_TOKEN: ${{ secrets.JIRA_API_TOKEN }}
           GOOGLE_DRIVE_CREDENTIALS_JSON: ${{ secrets.GOOGLE_DRIVE_CREDENTIALS_JSON }}
         run: |
-          python jira_importer.py
+          python jira_importer_v2.py
 
       # Optional step to upload the generated JSON file as an artifact
       - name: Upload jira_issues.json as artifact
