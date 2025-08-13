@@ -83,9 +83,6 @@ def upload_to_google_drive(drive: GoogleDrive, file_path: str, folder_id: str):
     if not os.path.isfile(file_path):
         raise FileNotFoundError(f"Local file not found: {file_path}")
 
-    # Validate folder and resolve shortcut if needed
-    folder_id = validate_and_resolve_folder_id(drive, folder_id)
-
     file_name = os.path.basename(file_path)
 
     # Find existing file by name inside the folder
