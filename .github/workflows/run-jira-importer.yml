@@ -33,9 +33,9 @@ jobs:
         run: |
           python jira_importer_v2.py
 
-      # Optional step to upload the generated JSON file as an artifact
-      - name: Upload jira_issues.json as artifact
+      - name: Upload jira_issues.txt as artifact
         uses: actions/upload-artifact@v4
         with:
-          name: jira-issues-json
-          path: jira_issues.json
+          name: jira-issues-txt
+          path: jira_issues.txt
+          if-no-files-found: error
