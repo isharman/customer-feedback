@@ -1,5 +1,6 @@
 import os
 import json
+import requests
 from jira import JIRA
 from dotenv import load_dotenv
 from datetime import datetime
@@ -88,36 +89,43 @@ def upload_to_google_drive(drive: GoogleDrive, file_path: str, folder_id: str):
 # Jira -> JSON + TXT export
 # =========================
 def export_jira_data(jira_url: str, jira_email: str, jira_api_token: str, jql_query: str, json_path: str, txt_path: str):
-    try:
-        jira = JIRA(server=jira_url, basic_auth=(jira_email, jira_api_token))
-        print("Successfully connected to Jira.")
-    except Exception as e:
-        raise RuntimeError(f"Failed to connect to Jira: {e}") from e
+    print("Authenticating with Jira Cloud REST API v3...")
+    api_url = f"{jira_url}/rest/api/3/search"
+    headers = {
+        "Accept": "application/json"
+    }
 
-    print(f"Searching for issues with JQL: {jql_query}")
+    params = {
+        "jql": jql_query,
+        "maxResults": 1000,
+        "fields": [
+            "summary", "description", "reporter", "assignee", "created", "status",
+            "customfield_17591", "customfield_17636", "customfield_14707"
+        ]
+    }
 
     try:
-        issues = jira.search_issues(jql_query, maxResults=None)
-        print(f"Found {len(issues)} issues.")
+        response = requests.get(api_url, headers=headers, auth=(jira_email, jira_api_token), params=params)
+        response.raise_for_status()
+        data = response.json()
+        print(f"Found {data['total']} issues.")
     except Exception as e:
         raise RuntimeError(f"Failed to fetch issues: {e}") from e
 
     issue_list = []
-    for issue in issues:
-        fields = issue.fields
+    for issue in data.get("issues", []):
+        fields = issue.get("fields", {})
         issue_data = {
-            "key": issue.key,
-            "summary": getattr(fields, "summary", None),
-            "description": getattr(fields, "description", None),
-            "reporter": fields.reporter.displayName if getattr(fields, "reporter", None) else None,
-            "assignee": fields.assignee.displayName if getattr(fields, "assignee", None) else None,
-            "created": getattr(fields, "created", None),
-            "status": fields.status.name if getattr(fields, "status", None) else None,
-            "product_area": (getattr(fields, "customfield_17591", None).value
-                             if getattr(fields, "customfield_17591", None) else None),
-            "idea_priority": (getattr(fields, "customfield_17636", None).value
-                              if getattr(fields, "customfield_17636", None) else None),
-            "workaround": getattr(fields, "customfield_14707", None),
+            "key": issue.get("key"),
+            "summary": fields.get("summary"),
+            "description": fields.get("description"),
+            "reporter": fields.get("reporter", {}).get("displayName"),
+            "assignee": fields.get("assignee", {}).get("displayName"),
+            "created": fields.get("created"),
+            "status": fields.get("status", {}).get("name"),
+            "product_area": fields.get("customfield_17591", {}).get("value") if fields.get("customfield_17591") else None,
+            "idea_priority": fields.get("customfield_17636", {}).get("value") if fields.get("customfield_17636") else None,
+            "workaround": fields.get("customfield_14707"),
         }
         issue_list.append(issue_data)
 
@@ -129,7 +137,6 @@ def export_jira_data(jira_url: str, jira_email: str, jira_api_token: str, jql_qu
 
     with open(json_path, "w", encoding="utf-8") as f:
         json.dump(output_data, f, ensure_ascii=False, indent=4)
-
     print(f"Successfully saved JSON to {json_path}")
 
     with open(txt_path, "w", encoding="utf-8") as f:
@@ -145,7 +152,6 @@ def export_jira_data(jira_url: str, jira_email: str, jira_api_token: str, jql_qu
             f.write(f"Description:\n{issue['description']}\n")
             f.write(f"Workaround:\n{issue['workaround']}\n")
             f.write("----------------------------------------\n\n")
-
     print(f"Successfully saved TXT to {txt_path}")
 
 # =========================
