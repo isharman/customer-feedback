@@ -66,49 +66,49 @@ def export_jira_data(jira_url: str, jira_email: str, jira_api_token: str, jql_qu
     )
 
     try:
-    all_issues = []
-    offset = 0
-    max_per_page = 100  # adjust if you know your server permits more
+        all_issues = []
+        offset = 0
+        max_per_page = 100  # adjust if you know your server permits more
 
-    while True:
-        result = jira.jql(
-            jql_query,
-            limit=max_per_page,
-            offset=offset,
-            fields=[
-                "summary", "description", "reporter", "assignee", "created",
-                "status", "customfield_17591", "customfield_17636", "customfield_14707"
-            ]
-        )
-        issues = result.get("issues", [])
-        if not issues:
-            break
-        all_issues.extend(issues)
-        print(f"Fetched {len(issues)} issues (offset={offset})")
-        if len(issues) < max_per_page:
-            break
-        offset += len(issues)
-    print(f"Found {len(all_issues)} total issues.")
+        while True:
+            result = jira.jql(
+                jql_query,
+                limit=max_per_page,
+                offset=offset,
+                fields=[
+                    "summary", "description", "reporter", "assignee", "created",
+                    "status", "customfield_17591", "customfield_17636", "customfield_14707"
+                ]
+            )
+            issues = result.get("issues", [])
+            if not issues:
+                break
+            all_issues.extend(issues)
+            print(f"Fetched {len(issues)} issues (offset={offset})")
+            if len(issues) < max_per_page:
+                break
+            offset += len(issues)
+        print(f"Found {len(all_issues)} total issues.")
 
-except Exception as e:
-    raise RuntimeError(f"Failed to fetch issues: {e}") from e
+    except Exception as e:
+        raise RuntimeError(f"Failed to fetch issues: {e}") from e
 
-issue_list = []
-for issue in all_issues:
-    fields = issue.get("fields") or {}
-    issue_data = {
-        "key": issue.get("key"),
-        "summary": fields.get("summary"),
-        "description": fields.get("description"),
-        "reporter": fields.get("reporter", {}).get("displayName") if fields.get("reporter") else None,
-        "assignee": fields.get("assignee", {}).get("displayName") if fields.get("assignee") else None,
-        "created": fields.get("created"),
-        "status": fields.get("status", {}).get("name") if fields.get("status") else None,
-        "product_area": fields.get("customfield_17591", {}).get("value") if fields.get("customfield_17591") else None,
-        "idea_priority": fields.get("customfield_17636", {}).get("value") if fields.get("customfield_17636") else None,
-        "workaround": fields.get("customfield_14707"),
-    }
-    issue_list.append(issue_data)
+    issue_list = []
+    for issue in all_issues:
+        fields = issue.get("fields") or {}
+        issue_data = {
+            "key": issue.get("key"),
+            "summary": fields.get("summary"),
+            "description": fields.get("description"),
+            "reporter": fields.get("reporter", {}).get("displayName") if fields.get("reporter") else None,
+            "assignee": fields.get("assignee", {}).get("displayName") if fields.get("assignee") else None,
+            "created": fields.get("created"),
+            "status": fields.get("status", {}).get("name") if fields.get("status") else None,
+            "product_area": fields.get("customfield_17591", {}).get("value") if fields.get("customfield_17591") else None,
+            "idea_priority": fields.get("customfield_17636", {}).get("value") if fields.get("customfield_17636") else None,
+            "workaround": fields.get("customfield_14707"),
+        }
+        issue_list.append(issue_data)
 
     with open(json_path, "w", encoding="utf-8") as f:
         json.dump(output_data, f, ensure_ascii=False, indent=4)
