@@ -66,12 +66,15 @@ def export_jira_data(jira_url: str, jira_email: str, jira_api_token: str, jql_qu
     )
 
     try:
-        result = jira.jql(jql_query, limit=1000, fields=[
-            "summary", "description", "reporter", "assignee", "created",
-            "status", "customfield_17591", "customfield_17636", "customfield_14707"
-        ])
-        issues = result.get("issues", [])
-        print(f"Found {len(issues)} issues.")
+        issues = jira.jql_paginated(
+            jql_query,
+            limit=1000,
+            fields=[
+                "summary", "description", "reporter", "assignee", "created",
+                "status", "customfield_17591", "customfield_17636", "customfield_14707"
+            ]
+        )
+print(f"Found {len(issues)} issues.")
     except Exception as e:
         raise RuntimeError(f"Failed to fetch issues: {e}") from e
 
