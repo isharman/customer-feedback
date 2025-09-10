@@ -74,7 +74,7 @@ def export_jira_data(jira_url: str, jira_email: str, jira_api_token: str, jql_qu
                 "status", "customfield_17591", "customfield_17636", "customfield_14707"
             ]
         )
-print(f"Found {len(issues)} issues.")
+        print(f"Found {len(issues)} issues.")
     except Exception as e:
         raise RuntimeError(f"Failed to fetch issues: {e}") from e
 
