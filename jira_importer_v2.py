@@ -100,14 +100,11 @@ def export_jira_data(jira_url: str, jira_email: str, jira_api_token: str, jql_qu
     "maxResults": 1000,
     "fields": "summary,description,reporter,assignee,created,status,customfield_17591,customfield_17636,customfield_14707"
     }
-
-    response = requests.get(api_url, headers=headers, auth=(jira_email, jira_api_token), params=params)
-    # Always print request info before try block
-    print(f"🔎 Final URL: {response.url}")
-    print(f"🔁 Status code: {response.status_code}")
-    print(f"🔍 Raw text: {response.text[:500]}")  # ← optional preview
     
     try:
+        response = requests.get(api_url, headers=headers, auth=(jira_email, jira_api_token), params=params)
+        # ✅ Print the actual URL being hit
+        print(f"🔎 Final URL: {response.url}")
         response.raise_for_status()
         data = response.json()
         print(f"Found {data['total']} issues.")
