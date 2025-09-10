@@ -102,8 +102,11 @@ def export_jira_data(jira_url: str, jira_email: str, jira_api_token: str, jql_qu
     }
 
     try:
-        print(f"🔎 Final URL: {response.url}")
         response = requests.get(api_url, headers=headers, auth=(jira_email, jira_api_token), params=params)
+
+        # ✅ Print the actual URL being hit
+        print(f"🔎 Final URL: {response.url}")
+        
         response.raise_for_status()
         data = response.json()
         print(f"Found {data['total']} issues.")
