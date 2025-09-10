@@ -1,11 +1,10 @@
 import os
 import json
-from jira import JIRA
-from dotenv import load_dotenv
 from datetime import datetime
+from dotenv import load_dotenv
+from atlassian import Jira
 
 # ----- PyDrive2 / Google Auth -----
-from google.oauth2 import service_account
 from pydrive2.auth import GoogleAuth
 from pydrive2.drive import GoogleDrive
 
@@ -22,37 +21,6 @@ def login_with_service_account():
     gauth = GoogleAuth(settings=settings)
     gauth.ServiceAuth()
     return gauth
-
-def _get_file_metadata(drive: GoogleDrive, file_id: str, fields: str = "id, name, mimeType, driveId, parents, shortcutDetails"):
-    return drive.auth.service.files().get(
-        fileId=file_id,
-        fields=fields,
-        supportsAllDrives=True,
-    ).execute()
-
-def validate_and_resolve_folder_id(drive: GoogleDrive, folder_id: str) -> str:
-    try:
-        meta = _get_file_metadata(drive, folder_id)
-    except Exception as e:
-        raise ValueError(
-            f"Folder not found or not shared with the service account. "
-            f"Double-check the ID and permissions for '{folder_id}'."
-        ) from e
-
-    mime_type = meta.get("mimeType")
-    if mime_type == "application/vnd.google-apps.shortcut":
-        target_id = meta.get("shortcutDetails", {}).get("targetId")
-        if not target_id:
-            raise ValueError("Provided ID is a shortcut but targetId is missing.")
-        print(f"Provided folder ID is a shortcut. Using target folder ID: {target_id}")
-        meta = _get_file_metadata(drive, target_id)
-        mime_type = meta.get("mimeType")
-        folder_id = target_id
-
-    if mime_type != "application/vnd.google-apps.folder":
-        raise ValueError(f"ID '{folder_id}' is not a folder (mimeType={mime_type}).")
-
-    return folder_id
 
 def upload_to_google_drive(drive: GoogleDrive, file_path: str, folder_id: str):
     if not os.path.isfile(file_path):
@@ -88,36 +56,39 @@ def upload_to_google_drive(drive: GoogleDrive, file_path: str, folder_id: str):
 # Jira -> JSON + TXT export
 # =========================
 def export_jira_data(jira_url: str, jira_email: str, jira_api_token: str, jql_query: str, json_path: str, txt_path: str):
-    try:
-        jira = JIRA(server=jira_url, basic_auth=(jira_email, jira_api_token))
-        print("Successfully connected to Jira.")
-    except Exception as e:
-        raise RuntimeError(f"Failed to connect to Jira: {e}") from e
+    print("Authenticating with Jira Cloud using Atlassian SDK...")
 
-    print(f"Searching for issues with JQL: {jql_query}")
+    jira = Jira(
+        url=jira_url,
+        username=jira_email,
+        password=jira_api_token,
+        cloud=True
+    )
 
     try:
-        issues = jira.search_issues(jql_query, maxResults=None)
+        result = jira.jql(jql_query, limit=1000, fields=[
+            "summary", "description", "reporter", "assignee", "created",
+            "status", "customfield_17591", "customfield_17636", "customfield_14707"
+        ])
+        issues = result.get("issues", [])
         print(f"Found {len(issues)} issues.")
     except Exception as e:
         raise RuntimeError(f"Failed to fetch issues: {e}") from e
 
     issue_list = []
     for issue in issues:
-        fields = issue.fields
+        fields = issue.get("fields") or {}
         issue_data = {
-            "key": issue.key,
-            "summary": getattr(fields, "summary", None),
-            "description": getattr(fields, "description", None),
-            "reporter": fields.reporter.displayName if getattr(fields, "reporter", None) else None,
-            "assignee": fields.assignee.displayName if getattr(fields, "assignee", None) else None,
-            "created": getattr(fields, "created", None),
-            "status": fields.status.name if getattr(fields, "status", None) else None,
-            "product_area": (getattr(fields, "customfield_17591", None).value
-                             if getattr(fields, "customfield_17591", None) else None),
-            "idea_priority": (getattr(fields, "customfield_17636", None).value
-                              if getattr(fields, "customfield_17636", None) else None),
-            "workaround": getattr(fields, "customfield_14707", None),
+            "key": issue.get("key"),
+            "summary": fields.get("summary"),
+            "description": fields.get("description"),
+            "reporter": fields.get("reporter", {}).get("displayName") if fields.get("reporter") else None,
+            "assignee": fields.get("assignee", {}).get("displayName") if fields.get("assignee") else None,
+            "created": fields.get("created"),
+            "status": fields.get("status", {}).get("name") if fields.get("status") else None,
+            "product_area": fields.get("customfield_17591", {}).get("value") if fields.get("customfield_17591") else None,
+            "idea_priority": fields.get("customfield_17636", {}).get("value") if fields.get("customfield_17636") else None,
+            "workaround": fields.get("customfield_14707"),
         }
         issue_list.append(issue_data)
 
@@ -129,7 +100,6 @@ def export_jira_data(jira_url: str, jira_email: str, jira_api_token: str, jql_qu
 
     with open(json_path, "w", encoding="utf-8") as f:
         json.dump(output_data, f, ensure_ascii=False, indent=4)
-
     print(f"Successfully saved JSON to {json_path}")
 
     with open(txt_path, "w", encoding="utf-8") as f:
@@ -145,7 +115,6 @@ def export_jira_data(jira_url: str, jira_email: str, jira_api_token: str, jql_qu
             f.write(f"Description:\n{issue['description']}\n")
             f.write(f"Workaround:\n{issue['workaround']}\n")
             f.write("----------------------------------------\n\n")
-
     print(f"Successfully saved TXT to {txt_path}")
 
 # =========================
