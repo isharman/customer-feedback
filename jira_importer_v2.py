@@ -82,7 +82,7 @@ def export_jira_data(jira_url: str, jira_email: str, jira_api_token: str, jql_qu
             "key": issue.get("key"),
             "summary": fields.get("summary"),
             "description": fields.get("description"),
-            "reporter": fields.get("reporter", {}).get("displayName") if fields.get("reporter") else None,,
+            "reporter": fields.get("reporter", {}).get("displayName") if fields.get("reporter") else None,
             "assignee": fields.get("assignee", {}).get("displayName") if fields.get("assignee") else None,
             "created": fields.get("created"),
             "status": fields.get("status", {}).get("name") if fields.get("status") else None,
