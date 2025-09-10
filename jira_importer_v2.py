@@ -1,12 +1,10 @@
 import os
 import json
-import requests
-from jira import JIRA
-from dotenv import load_dotenv
 from datetime import datetime
+from dotenv import load_dotenv
+from atlassian import Jira
 
 # ----- PyDrive2 / Google Auth -----
-from google.oauth2 import service_account
 from pydrive2.auth import GoogleAuth
 from pydrive2.drive import GoogleDrive
 
@@ -23,37 +21,6 @@ def login_with_service_account():
     gauth = GoogleAuth(settings=settings)
     gauth.ServiceAuth()
     return gauth
-
-def _get_file_metadata(drive: GoogleDrive, file_id: str, fields: str = "id, name, mimeType, driveId, parents, shortcutDetails"):
-    return drive.auth.service.files().get(
-        fileId=file_id,
-        fields=fields,
-        supportsAllDrives=True,
-    ).execute()
-
-def validate_and_resolve_folder_id(drive: GoogleDrive, folder_id: str) -> str:
-    try:
-        meta = _get_file_metadata(drive, folder_id)
-    except Exception as e:
-        raise ValueError(
-            f"Folder not found or not shared with the service account. "
-            f"Double-check the ID and permissions for '{folder_id}'."
-        ) from e
-
-    mime_type = meta.get("mimeType")
-    if mime_type == "application/vnd.google-apps.shortcut":
-        target_id = meta.get("shortcutDetails", {}).get("targetId")
-        if not target_id:
-            raise ValueError("Provided ID is a shortcut but targetId is missing.")
-        print(f"Provided folder ID is a shortcut. Using target folder ID: {target_id}")
-        meta = _get_file_metadata(drive, target_id)
-        mime_type = meta.get("mimeType")
-        folder_id = target_id
-
-    if mime_type != "application/vnd.google-apps.folder":
-        raise ValueError(f"ID '{folder_id}' is not a folder (mimeType={mime_type}).")
-
-    return folder_id
 
 def upload_to_google_drive(drive: GoogleDrive, file_path: str, folder_id: str):
     if not os.path.isfile(file_path):
@@ -89,30 +56,27 @@ def upload_to_google_drive(drive: GoogleDrive, file_path: str, folder_id: str):
 # Jira -> JSON + TXT export
 # =========================
 def export_jira_data(jira_url: str, jira_email: str, jira_api_token: str, jql_query: str, json_path: str, txt_path: str):
-    print("Authenticating with Jira Cloud REST API v3...")
-    api_url = f"{jira_url}/rest/api/3/search"
-    headers = {
-        "Accept": "application/json"
-    }
+    print("Authenticating with Jira Cloud using Atlassian SDK...")
 
-    params = {
-    "jql": jql_query,
-    "maxResults": 1000,
-    "fields": "summary,description,reporter,assignee,created,status,customfield_17591,customfield_17636,customfield_14707"
-    }
-    
+    jira = Jira(
+        url=jira_url,
+        username=jira_email,
+        password=jira_api_token,
+        cloud=True
+    )
+
     try:
-        response = requests.get(api_url, headers=headers, auth=(jira_email, jira_api_token), params=params)
-        # ✅ Print the actual URL being hit
-        print(f"🔎 Final URL: {response.url}")
-        response.raise_for_status()
-        data = response.json()
-        print(f"Found {data['total']} issues.")
+        data = jira.jql(jql_query, limit=1000, fields=[
+            "summary", "description", "reporter", "assignee", "created",
+            "status", "customfield_17591", "customfield_17636", "customfield_14707"
+        ])
+        issues = data.get("issues", [])
+        print(f"Found {len(issues)} issues.")
     except Exception as e:
         raise RuntimeError(f"Failed to fetch issues: {e}") from e
 
     issue_list = []
-    for issue in data.get("issues", []):
+    for issue in issues:
         fields = issue.get("fields", {})
         issue_data = {
             "key": issue.get("key"),
