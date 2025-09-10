@@ -65,36 +65,45 @@ def export_jira_data(jira_url: str, jira_email: str, jira_api_token: str, jql_qu
         cloud=True
     )
 
+    # --- Fetch ALL issues via manual pagination (stable across SDK versions)
     try:
-        all_issues = []
-        offset = 0
-        max_per_page = 100  # adjust if you know your server permits more
+        page_size = 100  # Jira default page size
+        start = 0
+        issues = []
+        max_issues = 3000  # safety cap
 
         while True:
+            remaining = max_issues - len(issues)
+            if remaining <= 0:
+                print("Reached max_issues cap; stopping pagination.")
+                break
+
+            current_limit = min(page_size, remaining)
             result = jira.jql(
                 jql_query,
-                limit=max_per_page,
-                offset=offset,
+                start=start,
+                limit=current_limit,
                 fields=[
                     "summary", "description", "reporter", "assignee", "created",
                     "status", "customfield_17591", "customfield_17636", "customfield_14707"
-                ]
+                ],
             )
-            issues = result.get("issues", [])
-            if not issues:
-                break
-            all_issues.extend(issues)
-            print(f"Fetched {len(issues)} issues (offset={offset})")
-            if len(issues) < max_per_page:
-                break
-            offset += len(issues)
-        print(f"Found {len(all_issues)} total issues.")
+            page_issues = result.get("issues", [])
+            issues.extend(page_issues)
 
+            print(f"Fetched {len(page_issues)} issues (Total so far: {len(issues)})")
+
+            if len(page_issues) < current_limit:
+                break  # last page reached
+
+            start += current_limit
+
+        print(f"Found {len(issues)} issues (capped at {max_issues}).")
     except Exception as e:
         raise RuntimeError(f"Failed to fetch issues: {e}") from e
 
     issue_list = []
-    for issue in all_issues:
+    for issue in issues:
         fields = issue.get("fields") or {}
         issue_data = {
             "key": issue.get("key"),
@@ -109,6 +118,12 @@ def export_jira_data(jira_url: str, jira_email: str, jira_api_token: str, jql_qu
             "workaround": fields.get("customfield_14707"),
         }
         issue_list.append(issue_data)
+
+    last_updated = datetime.utcnow().strftime("%B %d, %Y at %I:%M %p UTC")
+    output_data = {
+        "last_updated": last_updated,
+        "issues": issue_list
+    }
 
     with open(json_path, "w", encoding="utf-8") as f:
         json.dump(output_data, f, ensure_ascii=False, indent=4)
