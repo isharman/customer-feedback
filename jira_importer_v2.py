@@ -96,13 +96,10 @@ def export_jira_data(jira_url: str, jira_email: str, jira_api_token: str, jql_qu
     }
 
     params = {
-        "jql": jql_query,
-        "maxResults": 3000,
-        "fields": [
-            "summary", "description", "reporter", "assignee", "created", "status",
-            "customfield_17591", "customfield_17636", "customfield_14707"
-        ]
-    }
+    "jql": jql_query,
+    "maxResults": 3000,
+    "fields": "summary,description,reporter,assignee,created,status,customfield_17591,customfield_17636,customfield_14707"
+}
 
     try:
         response = requests.get(api_url, headers=headers, auth=(jira_email, jira_api_token), params=params)
